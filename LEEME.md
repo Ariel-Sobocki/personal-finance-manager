@@ -142,3 +142,58 @@ OK
 - **Saldo vs. monto:** en `apply_transaction()` el valor a sumar o restar es el monto de la transacción recibida (`transaction.amount`), no el saldo actual (`self._balance` / `self.get_balance()`).
 - **Bug no cubierto por pruebas:** el formato `{:2.f}` en `summary()` lanzaba `ValueError: Format specifier missing precision`, pero ninguna prueba llamaba a `summary()`. Esto evidencia la necesidad de escribir pruebas propias (tarea 5 del proyecto).
 - **Buena práctica TDD:** se pueden *agregar* pruebas nuevas, pero no se deben modificar las existentes para que pasen.
+
+## Paso 4: Completar la clase Transaction
+
+### Objetivo
+
+Implementar los métodos especiales `__str__` y `__eq__` de la clase `Transaction`, para que las transacciones puedan mostrarse como texto y compararse por valor.
+
+### Descripción
+
+1. Se ejecutaron las pruebas de `transaction/test_transaction.py` para ver el estado ROJO: `test_transaction_str` daba `ERROR` (`__str__` devolvía `None`) y `test_transaction_equality` daba `FAIL` (`__eq__` devolvía `None`).
+
+2. Se implementó `__str__` con un f-string que respeta exactamente el formato exigido por la prueba:
+
+```
+python
+def __str__(self):
+    return f"Transaction(${self.amount}, category='{self.category}')"
+```
+
+3. Se implementó `__eq__` con igualdad por valor (mismo monto y misma categoría), devolviendo `NotImplemented` cuando el otro objeto no es una `Transaction`:
+
+```
+python
+def __eq__(self, other):
+    if not isinstance(other, Transaction):
+        return NotImplemented
+    return (self.amount == other.amount) and (self.category == other.category)
+```
+
+4. Se agregaron dos pruebas propias para cubrir huecos de las pruebas originales:
+   - `test_transaction_not_equal_different_category`: mismo monto, distinta categoría.
+   - `test_transaction_not_equal_other_type`: comparación contra un objeto que no es `Transaction`.
+
+5. Se verificó que las pruebas nuevas detectan errores reales: al borrar temporalmente la comparación de categoría en `__eq__`, falló `test_transaction_not_equal_different_category`. Luego se restauró el código.
+
+6. Se documentó el código con comentarios `#` en `transaction/transaction.py` y `transaction/test_transaction.py`.
+
+```
+bash
+python3 -m unittest transaction/test_transaction.py -v
+```
+
+### Resultado
+
+```
+Ran 5 tests in 0.000s
+
+OK
+```
+
+### Observaciones
+
+- **Precedencia de operadores:** la primera versión `return self.amount and self.category == other` se evaluaba como `self.amount and (self.category == other)`, comparando una categoría contra una transacción entera y devolviendo siempre `False`. Cada lado del `and` debe ser una comparación completa entre atributos.
+- **Tests que pasan por casualidad:** con ese bug, `assertNotEqual(t1, t3)` pasaba igual, porque el código devolvía siempre `False`. Por eso una prueba debe verificar tanto el caso "igual" como el caso "distinto".
+- **Métodos especiales (dunder):** `__str__` y `__eq__` no se llaman directamente; Python los invoca al usar `str()` / `print()` y el operador `==`.
