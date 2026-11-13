@@ -197,3 +197,53 @@ OK
 - **Precedencia de operadores:** la primera versión `return self.amount and self.category == other` se evaluaba como `self.amount and (self.category == other)`, comparando una categoría contra una transacción entera y devolviendo siempre `False`. Cada lado del `and` debe ser una comparación completa entre atributos.
 - **Tests que pasan por casualidad:** con ese bug, `assertNotEqual(t1, t3)` pasaba igual, porque el código devolvía siempre `False`. Por eso una prueba debe verificar tanto el caso "igual" como el caso "distinto".
 - **Métodos especiales (dunder):** `__str__` y `__eq__` no se llaman directamente; Python los invoca al usar `str()` / `print()` y el operador `==`.
+
+## Paso 5: Patrón Adapter — TransactionAdapter
+
+### Objetivo
+
+Adaptar los ingresos provenientes de una plataforma freelance externa (`ExternalFreelanceIncome`) a objetos internos `Transaction`, sin modificar ninguna de las dos clases.
+
+### Descripción
+
+1. Se identificaron los roles del patrón:
+   - **Adaptee:** `ExternalFreelanceIncome` (`amount`, `invoice_id`, `description`, `typ = "income"`).
+   - **Target:** `Transaction` (`amount` + `category` como Enum).
+   - **Adapter:** `TransactionAdapter`, que recibe el objeto externo y devuelve una `Transaction`.
+
+2. Se eligió una traducción robusta del tipo: el string `"income"` se traduce a `TransactionCategory.INCOME` y cualquier otro valor lanza `ValueError`.
+
+3. Siguiendo TDD, primero se escribió la prueba propia `test_adapter_rejects_unknown_type` (ROJO) y luego se implementó `to_transaction()` (VERDE):
+
+```
+python
+def to_transaction(self):
+    ext = self.external_transaction
+    if ext.typ == "income":
+        category = TransactionCategory.INCOME
+    else:
+        raise ValueError(f"Tipo de transacción externa desconocido: {ext.typ}")
+    return Transaction(ext.amount, category)
+```
+
+4. Se documentó el código con comentarios `#` en `transaction/transaction_adapter.py` y `transaction/test_transaction_adapter.py`.
+
+```
+bash
+python3 -m unittest transaction/test_transaction_adapter.py -v
+```
+
+### Resultado
+
+```
+Ran 2 tests in 0.000s
+
+OK
+```
+
+### Observaciones
+
+- **Monto vs. tipo vs. objeto:** en las primeras versiones se pasó `ext.typ` y luego `ext` (el objeto entero) como monto de la `Transaction`. El monto correcto es el atributo `ext.amount`. Es el mismo error conceptual del Paso 3: distinguir el objeto de sus atributos.
+- **Dependencia entre pasos:** la prueba del adapter compara con `assertEqual` dos objetos `Transaction` distintos; solo puede pasar gracias al `__eq__` implementado en el Paso 4.
+- **Mensajes de error poco claros:** el `AssertionError` mostraba `<Transaction object at 0x...>` porque `assertEqual` usa `__repr__`, no `__str__`. Queda como mejora (refactor) agregar `__repr__` a `Transaction`.
+- Los datos que el sistema interno no necesita (`invoice_id`, `description`) se descartan en la adaptación.
