@@ -7,17 +7,17 @@ from balance.balance_observer import LowBalanceAlertObserver
 class TestLowBalanceAlertObserver(unittest.TestCase):
 
     def setUp(self):
-        self.balance = Balance.get_instance()
-        self.balance.reset()
+        self.balance = Balance.get_instance() # 
+        self.balance.reset() # Devuelve el saldo a 0.0
 
     def test_alert_triggers_on_low_balance(self):
         observer = LowBalanceAlertObserver(threshold=50)
         self.balance.register_observer(observer)
 
-        self.balance.apply_transaction(Transaction(100, TransactionCategory.INCOME))
+        self.balance.apply_transaction(Transaction(100, TransactionCategory.INCOME)) #  suma
         self.assertFalse(observer.alert_triggered)
 
-        self.balance.apply_transaction(Transaction(60, TransactionCategory.EXPENSE))
+        self.balance.apply_transaction(Transaction(60, TransactionCategory.EXPENSE)) #  resta
         self.assertTrue(observer.alert_triggered)
 
         self.balance.apply_transaction(Transaction(100, TransactionCategory.INCOME))

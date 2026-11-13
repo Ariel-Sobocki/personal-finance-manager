@@ -84,3 +84,61 @@ FAILED (failures=2, errors=10)
 
 - **ERROR vs FAIL:** un `ERROR` indica que el código lanzó una excepción inesperada antes de poder verificar el resultado (por ejemplo, un método inexistente). Un `FAIL` indica que el código se ejecutó, pero una aserción (`assertEqual`, `assertIs`, etc.) no se cumplió.
 - Este es el punto de partida ROJO del ciclo TDD: a partir de aquí cada paso busca convertir pruebas en verde.
+
+## Paso 3: Patrón Singleton — clase Balance
+
+### Objetivo
+
+Implementar la clase `Balance` como Singleton, garantizando que exista un único objeto de saldo en toda la aplicación, y completar sus operaciones de ingreso, gasto, aplicación de transacciones y resumen.
+
+### Descripción
+
+1. Se analizaron las pruebas de `balance/test_balance.py` como especificación: requieren el método de clase `Balance.get_instance()`, saldo inicial `0.0`, `reset()`, `add_income()`, `add_expense()`, `apply_transaction()` (con `ValueError` para categorías inválidas) y `get_balance()`.
+
+2. Se descartó el enfoque con `__new__`: aunque es un Singleton válido en Python, las pruebas exigen `get_instance()` y además `__init__` se ejecuta en cada llamada a `Balance()`, lo que reiniciaría el saldo.
+
+3. Se implementó el Singleton con un atributo de clase `_instance`, un `@classmethod get_instance()` que crea la instancia solo la primera vez, y un `__init__` que lanza `RuntimeError` si se intenta instanciar directamente cuando ya existe una instancia:
+
+```
+python
+@classmethod
+def get_instance(cls):
+    if cls._instance is None:
+        cls._instance = cls()
+    return cls._instance
+```
+
+4. Se completaron los métodos del saldo. `apply_transaction()` delega en `add_income()` / `add_expense()` usando `transaction.amount`, y `summary()` devuelve `"Saldo neto: {saldo:.2f}"`.
+
+5. Se ejecutaron las pruebas del módulo:
+
+```
+bash
+python3 -m unittest balance/test_balance.py -v
+```
+
+6. Se agregó una prueba propia, `test_summary`, como prueba de regresión del bug de formato en `summary()`:
+
+```
+python
+def test_summary(self):
+    self.balance.add_income(100)
+    self.assertEqual(self.balance.summary(), "Saldo neto: 100.00")
+```
+
+7. Se documentó el código con comentarios `#` en `balance/balance.py` (propósito del patrón Singleton, cada atributo y cada método), en `balance/test_balance.py` (qué verifica cada prueba) y en los archivos `__init__.py` (por qué existen).
+
+### Resultado
+
+```
+Ran 9 tests in 0.000s
+
+OK
+```
+
+### Observaciones
+
+- **Shadowing:** asignar `self.get_balance = 0.0` en `__init__` tapaba el método `get_balance()` con un float, provocando `TypeError: 'float' object is not callable`. Se resolvió guardando el dato en el atributo interno `self._balance`.
+- **Saldo vs. monto:** en `apply_transaction()` el valor a sumar o restar es el monto de la transacción recibida (`transaction.amount`), no el saldo actual (`self._balance` / `self.get_balance()`).
+- **Bug no cubierto por pruebas:** el formato `{:2.f}` en `summary()` lanzaba `ValueError: Format specifier missing precision`, pero ninguna prueba llamaba a `summary()`. Esto evidencia la necesidad de escribir pruebas propias (tarea 5 del proyecto).
+- **Buena práctica TDD:** se pueden *agregar* pruebas nuevas, pero no se deben modificar las existentes para que pasen.
