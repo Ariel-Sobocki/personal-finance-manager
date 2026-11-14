@@ -512,3 +512,28 @@ Saldo neto: 1255.00
 - **Cuando cambia el requisito, cambia el test (primero):** no se modifica una prueba para que pase un código roto, pero sí se actualiza cuando cambia lo que la aplicación debe hacer.
 - **Por qué `$1080.0`:** el operador `/` siempre devuelve `float` en Python 3.
 - **Principio abierto/cerrado:** para agregar una nueva regla (por ejemplo, una comisión fija) basta con crear otra clase que herede de `FeeStrategy`; el Adapter no se modifica.
+
+## Paso 11: Reflexión sobre las decisiones de diseño
+
+### Objetivo
+
+Cumplir la tarea 7 del proyecto: un escrito breve en el repositorio que explique las decisiones de diseño.
+
+### Descripción
+
+1. Se creó el archivo `REFLECTION.md` en la raíz del repositorio, en inglés (idioma del proyecto y de quien lo corrige), a partir de lo registrado en este LEEME.
+
+2. Contenido de la reflexión:
+   - Enfoque de desarrollo con TDD y el problema inicial de `Ran 0 tests`.
+   - Por qué se usó cada patrón (Singleton, Adapter, Observer y Strategy) y las alternativas descartadas.
+   - La trampa Singleton + Observer y la elección de `unregister_observer()` (opción B).
+   - Decisiones de pruebas: pruebas propias, verificar que un test falla, prueba de aceptación y cambio de requisito.
+   - Limitaciones y mejoras posibles: alerta que solo guarda el último estado, uso de `Decimal` para dinero, `__repr__` en `Transaction`.
+
+### Resultado
+
+- Archivo `REFLECTION.md` en la raíz del repositorio.
+
+### Observaciones
+
+- La reflexión debe expresar las decisiones de quien entrega el proyecto: conviene leerla completa y ajustar lo que no coincida con la propia forma de pensarlas.
