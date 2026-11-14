@@ -23,6 +23,9 @@ class Balance:
         if Balance._instance is not None:
             raise RuntimeError("Balance es un Singleton: usá Balance.get_instance()")
         self._balance = 0.0
+        # Lista de observers suscriptos (patrón Observer): Balance es el
+        # "Subject" y avisa a cada uno después de aplicar una transacción.
+        self._observers = []
 
     @classmethod
     def get_instance(cls):
@@ -60,6 +63,18 @@ class Balance:
             self.add_expense(transaction.amount)
         else:
             raise ValueError("Categoría de transacción inválida")
+
+        # Notifica a todos los observers suscriptos (patrón Observer).
+        # Se hace DESPUÉS de actualizar el saldo, para que vean el valor nuevo.
+        # Si la categoría es inválida, el raise corta antes y no se notifica.
+        # Se pasa self (el Balance entero) para que el observer consulte lo
+        # que necesite, por ejemplo balance.get_balance().
+        for observer in self._observers:
+            observer.update(self, transaction)
+
+    def register_observer(self, observer):
+        # Suscribe un observer: lo agrega a la lista para que reciba avisos.
+        self._observers.append(observer)
 
     def get_balance(self):
         # Devuelve el saldo neto actual.

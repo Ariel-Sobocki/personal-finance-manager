@@ -247,3 +247,55 @@ OK
 - **Dependencia entre pasos:** la prueba del adapter compara con `assertEqual` dos objetos `Transaction` distintos; solo puede pasar gracias al `__eq__` implementado en el Paso 4.
 - **Mensajes de error poco claros:** el `AssertionError` mostraba `<Transaction object at 0x...>` porque `assertEqual` usa `__repr__`, no `__str__`. Queda como mejora (refactor) agregar `__repr__` a `Transaction`.
 - Los datos que el sistema interno no necesita (`invoice_id`, `description`) se descartan en la adaptación.
+
+## Paso 6: Patrón Observer — LowBalanceAlertObserver
+
+### Objetivo
+
+Implementar el patrón Observer para que `Balance` notifique automáticamente a sus observadores después de cada transacción, y crear un observador que active una alerta cuando el saldo baja de un umbral.
+
+### Descripción
+
+1. Se analizó la prueba `balance/test_balance_observer.py` con una prueba de escritorio (umbral = 50): la alerta debe **recalcularse** en cada transacción, encendiéndose cuando el saldo es menor que 50 y apagándose cuando se recupera.
+
+2. Se identificaron los roles del patrón:
+   - **Subject:** `Balance`.
+   - **Observer:** `IBalanceObserver` (interfaz), con las implementaciones `LowBalanceAlertObserver` y `PrintObserver`.
+
+3. Se implementó en pasos pequeños, observando cómo cambiaba el error en cada uno:
+   - **Cambio 1:** lista `self._observers = []` en `Balance.__init__` y método `register_observer()`. El error pasó de `no attribute 'register_observer'` a `no attribute 'alert_triggered'`.
+   - **Cambio 2:** al final de `apply_transaction()`, después de actualizar el saldo, se notifica a cada observer con `observer.update(self, transaction)`.
+   - **Cambio 3:** en `LowBalanceAlertObserver` se agregó `self.alert_triggered = False` y la lógica de `update()`:
+
+```
+python
+def update(self, balance, transaction):
+    self.alert_triggered = balance.get_balance() < self.threshold
+```
+
+4. Se documentó el código con comentarios `#` en `balance/balance.py`, `balance/balance_observer.py` y `balance/test_balance_observer.py`.
+
+```
+bash
+python3 -m unittest discover
+```
+
+### Resultado
+
+```
+Ran 17 tests in 0.001s
+
+OK
+```
+
+Todas las pruebas originales de Udacity (13) y las pruebas propias (4) pasan.
+
+### Observaciones
+
+- **Avanzar empujando el error:** en TDD, que el mensaje de error cambie es progreso. Cada cambio pequeño hizo que la prueba llegara un poco más lejos.
+- **Notificar después de actualizar:** si se notificara antes, los observers verían el saldo viejo. Si la categoría es inválida, el `raise` corta la ejecución y nadie es notificado.
+- **Se pasa el objeto Balance (`self`) a `update()`:** el observer le pide el número con `balance.get_balance()`. Una comparación ya devuelve `True` o `False`, por lo que no hace falta un `if`.
+- **Pendientes detectados:**
+  - `PrintObserver.update()` sigue sin implementar y ninguna prueba lo cubre.
+  - **Singleton + Observer:** al terminar las pruebas queda 1 observer registrado en la instancia única, porque `reset()` solo reinicia el saldo. Los observers se acumulan entre pruebas.
+  - `main.py` todavía tiene los `TODO` sin resolver: la aplicación solo imprime `Adding transactions...`.
