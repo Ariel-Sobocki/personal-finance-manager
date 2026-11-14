@@ -22,8 +22,12 @@ class IBalanceObserver:
 class PrintObserver(IBalanceObserver):
     # Observer concreto que muestra por pantalla cada actualización del saldo.
     def update(self, balance, transaction):
-        """Print balance update message."""
-        pass
+        # Imprime la transacción aplicada y el saldo resultante, reutilizando
+        # Transaction.__str__ (Paso 4) y Balance.summary() (Paso 3).
+        # balance es el objeto Balance: se le pide el texto con summary().
+        # Ej: Transaction($100, category='TransactionCategory.INCOME') -> Saldo neto: 100.00
+        print(f"{transaction} -> {balance.summary()}")
+
 
 
 class LowBalanceAlertObserver(IBalanceObserver):

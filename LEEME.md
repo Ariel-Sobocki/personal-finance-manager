@@ -299,3 +299,48 @@ Todas las pruebas originales de Udacity (13) y las pruebas propias (4) pasan.
   - `PrintObserver.update()` sigue sin implementar y ninguna prueba lo cubre.
   - **Singleton + Observer:** al terminar las pruebas queda 1 observer registrado en la instancia única, porque `reset()` solo reinicia el saldo. Los observers se acumulan entre pruebas.
   - `main.py` todavía tiene los `TODO` sin resolver: la aplicación solo imprime `Adding transactions...`.
+
+## Paso 7: PrintObserver con TDD completo
+
+### Objetivo
+
+Implementar `PrintObserver`, que muestra por pantalla cada transacción aplicada y el saldo resultante, escribiendo primero una prueba propia (no existía prueba de Udacity para este observer).
+
+### Descripción
+
+1. Se diseñó el formato del mensaje reutilizando métodos ya probados: `Transaction.__str__` (Paso 4) y `Balance.summary()` (Paso 3):
+
+```
+Transaction($100, category='TransactionCategory.INCOME') -> Saldo neto: 100.00
+```
+
+2. **ROJO:** se escribió la prueba `TestPrintObserver.test_print_observer_prints_transaction_and_balance` en `balance/test_balance_observer.py`. Para capturar lo que imprime `print()` se usó `io.StringIO` como "pantalla falsa" y `contextlib.redirect_stdout`. Resultado: `AssertionError: '' != "Transaction(...) -> Saldo neto: 100.00"`.
+
+3. **VERDE:** se implementó `update()`:
+
+```
+python
+def update(self, balance, transaction):
+    print(f"{transaction} -> {balance.summary()}")
+```
+
+4. Se documentó el código con comentarios `#`.
+
+```
+bash
+python3 -m unittest discover
+```
+
+### Resultado
+
+```
+Ran 18 tests in 0.001s
+
+OK
+```
+
+### Observaciones
+
+- **Leer el diff del error:** `assertEqual` con strings muestra una línea `-` (lo obtenido) y una `+` (lo esperado), lo que permite ubicar la diferencia exacta.
+- **Objeto vs. texto en un f-string:** `{transaction}` funciona porque `Transaction` tiene `__str__`; `{balance}` mostraba `<balance.balance.Balance object at 0x...>` porque `Balance` no lo tiene. La solución fue pedirle el texto con `balance.summary()` (con paréntesis, para *llamar* al método).
+- **Trampa Singleton + Observer confirmada:** al terminar las pruebas quedan 2 observers registrados en la instancia única (`LowBalanceAlertObserver` y `PrintObserver`).
