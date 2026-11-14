@@ -393,3 +393,64 @@ Al terminar todas las pruebas, la lista de observers de la instancia única qued
 - **Pruebas dependientes del orden:** un estado compartido (Singleton) que no se limpia puede hacer que una prueba pase o falle según qué pruebas corrieron antes. Son errores muy difíciles de diagnosticar.
 - **`addCleanup` vs. última línea:** `addCleanup` se ejecuta aunque la prueba falle; un `unregister_observer()` al final de la prueba no se ejecutaría si un `assert` previo falla.
 - **Pasar un método sin paréntesis:** en `addCleanup` se pasa `self.balance.unregister_observer` (el método, para que unittest lo llame después), no `unregister_observer()` (que lo ejecutaría en ese momento).
+
+## Paso 9: Aplicación funcionando — main.py
+
+### Objetivo
+
+Resolver los `TODO` de `main.py` para que la aplicación integre los tres patrones (Singleton, Observer y Adapter) y procese todas las transacciones.
+
+### Descripción
+
+1. Se calculó a mano el resultado esperado: `100 - 50 + 200 - 75 + 1200 = 1375`.
+
+2. **ROJO:** se creó la prueba de aceptación `starter/test_main.py`, que ejecuta `main()` completo capturando su salida y verifica que la última línea sea `Saldo neto: 1375.00` y que se haya aplicado el ingreso adaptado de 1200. Como `main()` registra observers en el Singleton, el `setUp` descarta la instancia única (`Balance._instance = None`) antes y después de la prueba.
+
+3. **VERDE:** se resolvieron los `TODO` de `main.py`:
+
+```
+python
+balance = Balance.get_instance()
+alert_observer = LowBalanceAlertObserver(threshold=100)
+balance.register_observer(PrintObserver())
+balance.register_observer(alert_observer)
+...
+for t in all_transactions:
+    balance.apply_transaction(t)
+
+print(f"Alerta de saldo bajo activa: {alert_observer.alert_triggered}")
+print(balance.summary())
+```
+
+4. Se documentó `main.py` con comentarios `#` que indican qué patrón interviene en cada parte.
+
+```
+bash
+python3 -m unittest discover
+python3 main.py
+```
+
+### Resultado
+
+```
+Ran 20 tests in 0.002s
+
+OK
+```
+
+```
+Adding transactions...
+Transaction($100, category='TransactionCategory.INCOME') -> Saldo neto: 100.00
+Transaction($50, category='TransactionCategory.EXPENSE') -> Saldo neto: 50.00
+Transaction($200, category='TransactionCategory.INCOME') -> Saldo neto: 250.00
+Transaction($75, category='TransactionCategory.EXPENSE') -> Saldo neto: 175.00
+Transaction($1200, category='TransactionCategory.INCOME') -> Saldo neto: 1375.00
+Alerta de saldo bajo activa: False
+Saldo neto: 1375.00
+```
+
+### Observaciones
+
+- **Prueba de aceptación vs. pruebas unitarias:** las unitarias prueban piezas aisladas; la de aceptación verifica que todas las piezas funcionen juntas.
+- **Probar un Singleton:** se reinicia la instancia única (`Balance._instance = None`) para que la prueba arranque limpia y no deje observers colgados.
+- **La alerta solo muestra el último estado:** con umbral 100, la alerta se encendió tras la segunda transacción (saldo 50) y se apagó en la tercera (saldo 250). Al final se muestra `False` porque `alert_triggered` se recalcula en cada transacción. Queda como posible mejora que el observer informe en el momento en que se dispara.
