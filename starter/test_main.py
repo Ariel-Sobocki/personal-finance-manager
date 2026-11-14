@@ -20,8 +20,8 @@ class TestMain(unittest.TestCase):
         text = output.getvalue()
         lines = text.strip().splitlines()
 
-        self.assertEqual(lines[-1], "Saldo neto: 1375.00")   # 100-50+200-75+1200
-        self.assertIn("Transaction($1200", text)              # el ingreso adaptado se aplicó
+        self.assertEqual(lines[-1], "Saldo neto: 1255.00")   # 100-50+200-75+1080 (1200 - 10%)
+        self.assertIn("Transaction($1080", text)              # el ingreso adaptado, neto de comisión
 
 
 if __name__ == "__main__":

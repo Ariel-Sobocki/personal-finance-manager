@@ -6,6 +6,7 @@ from transaction.transaction import Transaction
 from transaction.transaction_category import TransactionCategory
 from transaction.transaction_adapter import TransactionAdapter
 from transaction.external_income_transaction import ExternalFreelanceIncome
+from transaction.fee_strategy import PercentageFeeStrategy
 
 
 def main():
@@ -30,10 +31,10 @@ def main():
         Transaction(75, TransactionCategory.EXPENSE),
     ]
 
-    # ADAPTER: el ingreso freelance externo se convierte en una Transaction
-    # interna para que Balance pueda procesarlo.
+    # ADAPTER + STRATEGY: el ingreso freelance externo se convierte en una
+    # Transaction interna, descontando una comisión del 10% de la plataforma.
     freelance_income = ExternalFreelanceIncome(1200, "INV-98765", "Mobile App Project")
-    adapter = TransactionAdapter(freelance_income)
+    adapter = TransactionAdapter(freelance_income, PercentageFeeStrategy(10))
     adapted_transaction = adapter.to_transaction()
 
     all_transactions = transactions + [adapted_transaction]

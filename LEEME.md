@@ -454,3 +454,61 @@ Saldo neto: 1375.00
 - **Prueba de aceptación vs. pruebas unitarias:** las unitarias prueban piezas aisladas; la de aceptación verifica que todas las piezas funcionen juntas.
 - **Probar un Singleton:** se reinicia la instancia única (`Balance._instance = None`) para que la prueba arranque limpia y no deje observers colgados.
 - **La alerta solo muestra el último estado:** con umbral 100, la alerta se encendió tras la segunda transacción (saldo 50) y se apagó en la tercera (saldo 250). Al final se muestra `False` porque `alert_triggered` se recalcula en cada transacción. Queda como posible mejora que el observer informe en el momento en que se dispara.
+
+## Paso 10: Cuarto patrón — Strategy (comisiones)
+
+### Objetivo
+
+Elegir e integrar un cuarto patrón de diseño (tarea 6). Se eligió **Strategy** para resolver un problema real: las plataformas freelance cobran una comisión cuya regla puede cambiar (10%, 5%, sin comisión...).
+
+### Descripción
+
+1. Se compararon tres opciones (Strategy, Command y Decorator) y se eligió Strategy por su baja dificultad, su bajo riesgo de romper lo que ya funcionaba y por ser fácil de justificar.
+
+2. Se identificaron los roles del patrón:
+   - **Strategy (interfaz):** `FeeStrategy`, con el método `apply_fee(amount)`.
+   - **Estrategias concretas:** `NoFeeStrategy` (devuelve el monto sin cambios) y `PercentageFeeStrategy(percentage)` (descuenta un porcentaje).
+   - **Context:** `TransactionAdapter`, que usa la estrategia sin saber cuál es.
+
+3. Se implementó en cuatro cambios, cada uno con su ciclo ROJO → VERDE:
+   - **Cambio 1 (ROJO):** prueba `transaction/test_fee_strategy.py`. Error: `ModuleNotFoundError: No module named 'transaction.fee_strategy'`.
+   - **Cambio 2 (VERDE):** archivo `transaction/fee_strategy.py` con la interfaz y las dos estrategias.
+   - **Cambio 3:** prueba `test_adapter_applies_fee_strategy` (ROJO: `TypeError ... takes 2 positional arguments but 3 were given`) y luego el Adapter recibe la estrategia como parámetro opcional `fee_strategy=None` (por defecto `NoFeeStrategy`) y la aplica con `self.fee_strategy.apply_fee(ext.amount)` (VERDE).
+   - **Cambio 4:** cambio de requisito en la prueba de aceptación `test_main.py` (saldo esperado 1255.00, ROJO) y luego `main.py` crea el Adapter con `PercentageFeeStrategy(10)` (VERDE).
+
+4. Se documentó el código con comentarios `#` en `fee_strategy.py`, `transaction_adapter.py` y `main.py`.
+
+```
+bash
+python3 -m unittest discover
+python3 main.py
+```
+
+### Resultado
+
+```
+Ran 23 tests in 0.002s
+
+OK
+```
+
+```
+Adding transactions...
+Transaction($100, category='TransactionCategory.INCOME') -> Saldo neto: 100.00
+Transaction($50, category='TransactionCategory.EXPENSE') -> Saldo neto: 50.00
+Transaction($200, category='TransactionCategory.INCOME') -> Saldo neto: 250.00
+Transaction($75, category='TransactionCategory.EXPENSE') -> Saldo neto: 175.00
+Transaction($1080.0, category='TransactionCategory.INCOME') -> Saldo neto: 1255.00
+Alerta de saldo bajo activa: False
+Saldo neto: 1255.00
+```
+
+### Observaciones
+
+- **El que usa la estrategia solo conoce la interfaz común:** la primera versión llamaba a `self.fee_strategy.Percentage(...)`, un método que no existe. El Adapter puede recibir cualquier estrategia, así que solo puede llamar al método que todas comparten: `apply_fee()`.
+- **Errores repetidos, una sola causa:** los 3 errores decían `no attribute 'Percentage'`; una sola línea corregida los resolvió todos.
+- **Parámetro opcional con valor por defecto:** `fee_strategy=None` permitió agregar la estrategia sin romper el código existente que crea el Adapter con un solo argumento.
+- **`SyntaxError`:** aparece antes de ejecutar el código, cuando Python no puede leer el archivo (por ejemplo, una resta incompleta `amount -`).
+- **Cuando cambia el requisito, cambia el test (primero):** no se modifica una prueba para que pase un código roto, pero sí se actualiza cuando cambia lo que la aplicación debe hacer.
+- **Por qué `$1080.0`:** el operador `/` siempre devuelve `float` en Python 3.
+- **Principio abierto/cerrado:** para agregar una nueva regla (por ejemplo, una comisión fija) basta con crear otra clase que herede de `FeeStrategy`; el Adapter no se modifica.

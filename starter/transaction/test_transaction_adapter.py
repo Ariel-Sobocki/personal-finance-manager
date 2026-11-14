@@ -6,6 +6,7 @@ from transaction.external_income_transaction import ExternalFreelanceIncome
 from transaction.transaction_adapter import TransactionAdapter
 from transaction.transaction import Transaction
 from transaction.transaction_category import TransactionCategory
+from transaction.fee_strategy import PercentageFeeStrategy
 
 
 class TestTransactionAdapter(unittest.TestCase):
@@ -27,6 +28,13 @@ class TestTransactionAdapter(unittest.TestCase):
         adapter = TransactionAdapter(ext_txn)
         with self.assertRaises(ValueError):
             adapter.to_transaction()
+
+    def test_adapter_applies_fee_strategy(self):
+        # PRUEBA PROPIA (Strategy): el adapter descuenta la comisión de la plataforma.
+        ext_txn = ExternalFreelanceIncome(1200, "INV-55555", "App con comisión")
+        adapter = TransactionAdapter(ext_txn, PercentageFeeStrategy(10))
+        txn = adapter.to_transaction()
+        self.assertEqual(txn, Transaction(1080, TransactionCategory.INCOME))
 
 
 # Permite ejecutar este archivo directamente: python3 transaction/test_transaction_adapter.py

@@ -9,13 +9,19 @@
 
 from transaction.transaction import Transaction
 from transaction.transaction_category import TransactionCategory
+from transaction.fee_strategy import NoFeeStrategy
 
 
 class TransactionAdapter:
-    def __init__(self, external_transaction):
+    def __init__(self, external_transaction, fee_strategy=None):
         # Guarda el objeto externo que se va a adaptar (composición:
         # el adapter "envuelve" al objeto externo, no hereda de él).
         self.external_transaction = external_transaction
+        # STRATEGY: regla de comisión intercambiable. Si no se indica ninguna,
+        # se usa NoFeeStrategy (sin comisión), igual que antes.
+        if fee_strategy is None:
+            fee_strategy = NoFeeStrategy()
+        self.fee_strategy = fee_strategy
 
     def to_transaction(self):
         # Alias corto para no repetir self.external_transaction.
@@ -29,6 +35,8 @@ class TransactionAdapter:
         else:
             raise ValueError(f"Tipo de transacción externa desconocido: {ext.typ}")
         # 2) CONSTRUIR: se crea la Transaction interna con el MONTO del objeto
-        #    externo (ext.amount) y la categoría traducida. Los datos que el
-        #    sistema no necesita (invoice_id, description) se descartan.
-        return Transaction(ext.amount, category)
+        #    externo (ext.amount), neto de la comisión que calcula la
+        #    estrategia (STRATEGY: apply_fee, sin saber cuál es), y la
+        #    categoría traducida. invoice_id y description se descartan.
+        return Transaction(self.fee_strategy.apply_fee(ext.amount), category)
+
