@@ -76,6 +76,11 @@ class Balance:
         # Suscribe un observer: lo agrega a la lista para que reciba avisos.
         self._observers.append(observer)
 
+    def unregister_observer(self, observer):
+        # Desuscribe un observer: lo quita de la lista para que no reciba más avisos.
+        self._observers.remove(observer)
+
+
     def get_balance(self):
         # Devuelve el saldo neto actual.
         return self._balance

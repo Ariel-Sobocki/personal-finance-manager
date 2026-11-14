@@ -344,3 +344,52 @@ OK
 - **Leer el diff del error:** `assertEqual` con strings muestra una línea `-` (lo obtenido) y una `+` (lo esperado), lo que permite ubicar la diferencia exacta.
 - **Objeto vs. texto en un f-string:** `{transaction}` funciona porque `Transaction` tiene `__str__`; `{balance}` mostraba `<balance.balance.Balance object at 0x...>` porque `Balance` no lo tiene. La solución fue pedirle el texto con `balance.summary()` (con paréntesis, para *llamar* al método).
 - **Trampa Singleton + Observer confirmada:** al terminar las pruebas quedan 2 observers registrados en la instancia única (`LowBalanceAlertObserver` y `PrintObserver`).
+
+## Paso 8: Trampa Singleton + Observer — desuscripción de observers
+
+### Objetivo
+
+Evitar que los observers registrados en una prueba queden "colgados" en la instancia única de `Balance` y afecten a las pruebas siguientes.
+
+### Descripción
+
+1. Se detectó el problema: al terminar las pruebas quedaban registrados `LowBalanceAlertObserver` y `PrintObserver`, porque `Balance` es un Singleton (la lista `_observers` sobrevive entre pruebas) y `reset()` solo reinicia el saldo.
+
+2. Se evaluaron dos opciones:
+   - **A:** que `reset()` también vacíe `_observers`.
+   - **B:** agregar `unregister_observer()` y que cada prueba desuscriba lo que suscribió.
+
+   Se eligió la **opción B**: respeta la responsabilidad única de `reset()` (solo el saldo), evita desactivar alertas por accidente en `main.py` y completa el patrón Observer con la operación de desuscripción.
+
+3. **ROJO:** se escribió la prueba propia `test_unregistered_observer_is_not_notified`: un observer desuscripto no debe encender la alerta aunque el saldo quede en -60. Resultado: `AttributeError: 'Balance' object has no attribute 'unregister_observer'`.
+
+4. **VERDE:** se implementó el método en `Balance`:
+
+```
+python
+def unregister_observer(self, observer):
+    self._observers.remove(observer)
+```
+
+5. **Limpieza de pruebas:** en las pruebas que suscriben observers se agregó, justo después de `register_observer()`:
+
+```
+python
+self.addCleanup(self.balance.unregister_observer, observer)
+```
+
+### Resultado
+
+```
+Ran 19 tests in 0.001s
+
+OK
+```
+
+Al terminar todas las pruebas, la lista de observers de la instancia única queda vacía (`[]`).
+
+### Observaciones
+
+- **Pruebas dependientes del orden:** un estado compartido (Singleton) que no se limpia puede hacer que una prueba pase o falle según qué pruebas corrieron antes. Son errores muy difíciles de diagnosticar.
+- **`addCleanup` vs. última línea:** `addCleanup` se ejecuta aunque la prueba falle; un `unregister_observer()` al final de la prueba no se ejecutaría si un `assert` previo falla.
+- **Pasar un método sin paréntesis:** en `addCleanup` se pasa `self.balance.unregister_observer` (el método, para que unittest lo llame después), no `unregister_observer()` (que lo ejecutaría en ese momento).

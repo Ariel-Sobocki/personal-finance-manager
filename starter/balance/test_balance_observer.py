@@ -20,6 +20,9 @@ class TestLowBalanceAlertObserver(unittest.TestCase):
         # se enciende cuando el saldo baja de 50 y se apaga cuando se recupera.
         observer = LowBalanceAlertObserver(threshold=50)
         self.balance.register_observer(observer)
+        # addCleanup: al terminar el test (aunque falle) desuscribe el observer,
+        # para que no quede "colgado" en la instancia única de Balance.
+        self.addCleanup(self.balance.unregister_observer, observer)
 
         self.balance.apply_transaction(Transaction(100, TransactionCategory.INCOME))   # saldo 100
         self.assertFalse(observer.alert_triggered)
@@ -36,6 +39,16 @@ class TestLowBalanceAlertObserver(unittest.TestCase):
         self.balance.apply_transaction(Transaction(60, TransactionCategory.EXPENSE))   # saldo 20 -> alerta
         self.assertTrue(observer.alert_triggered)
 
+    def test_unregistered_observer_is_not_notified(self):
+        # PRUEBA PROPIA (tarea 5): un observer desuscripto ya no recibe avisos.
+        observer = LowBalanceAlertObserver(threshold=50)
+        self.balance.register_observer(observer)
+        self.balance.unregister_observer(observer)
+
+        self.balance.apply_transaction(Transaction(60, TransactionCategory.EXPENSE))  # saldo -60
+        self.assertFalse(observer.alert_triggered)   # no se enteró: la alerta sigue apagada
+
+
 class TestPrintObserver(unittest.TestCase):
 
     def setUp(self):
@@ -46,6 +59,9 @@ class TestPrintObserver(unittest.TestCase):
         # PRUEBA PROPIA (tarea 5): verifica el mensaje que imprime PrintObserver.
         observer = PrintObserver()
         self.balance.register_observer(observer)
+        # addCleanup: al terminar el test (aunque falle) desuscribe el observer,
+        # para que no quede "colgado" en la instancia única de Balance.
+        self.addCleanup(self.balance.unregister_observer, observer)
 
         output = io.StringIO()                 # "pantalla falsa" en memoria
         with redirect_stdout(output):          # todo print() va a parar a output
